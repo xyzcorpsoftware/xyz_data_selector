@@ -141,22 +141,8 @@ class Rect(object):
         if (self.y1 > self.y2):
             self.y1, self.y2 = self.y2, self.y1
 
-    def check_out_range(self, img_width, img_height):
-        if check_key_value(img_height, img_width):
-            self.x1 = max(0, self.x1)
-            self.x2 = max(0, self.x2)
-            self.y1 = max(0, self.y1)
-            self.y2 = max(0, self.y2)
-            self.x1 = min(self.x1, img_width - 1)
-            self.x2 = min(self.x2, img_width - 1)
-            self.y1 = min(self.y1, img_height - 1)
-            self.y2 = min(self.y2, img_height - 1)
-            return 1
-        else:
-            return 0
-
     def check_out_range(self, width, height):
-        interX, interY = self.intersection(None, width=width, height=height)
+        interX, interY = self.intersection(None, img_width=width, img_height=height)
         if interX < 0.01:
             return 0
         if interY < 0.01:
@@ -164,13 +150,15 @@ class Rect(object):
         return 1
 
     def intersection(self, other, img_width=None, img_height=None):
-        if other is None:
+        if other is not None:
             other.sortCoords()
             x1 = other.x1
             x2 = other.x2
             y1 = other.y1
             y2 = other.y2
         else:
+            if img_width is None or img_height is None:
+                return (0, 0)
             x1 = 0
             x2 = img_width
             y1 = 0

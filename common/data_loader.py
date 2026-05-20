@@ -147,7 +147,8 @@ def get_color_in_color_dict(color_list, class_id):
 def get_index_file_name(name, pos, num_zero=6, ext=".png"):
     _name = str(pos).zfill(num_zero) + ext
     if check_str_value(name):
-        _name = "%s_%s"
+        _name = "%s_%s" % (name, _name)
+    return _name
 
 def get_file_name_index(file_name):
     _name= os.path.splitext(file_name)[0]

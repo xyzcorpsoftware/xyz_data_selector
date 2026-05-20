@@ -4,6 +4,7 @@ import time
 import numpy as np
 import cv2
 import json
+import random
 import threading
 import concurrent.futures
 import json
@@ -197,7 +198,7 @@ class Operation_Key:
         return self.type_color[pos_type]
 
     def get_base_check_color(self):
-        return self._basic_check_color
+        return self.type_color[0]
 
 def open_file_list(data_path, data_type='image'):
     if data_type == 'image':
@@ -411,7 +412,7 @@ class Player_Base:
             return name
         else:
             if play_type in self._image_type_list:
-                return fl.get_sub_folder(data_path)
+                return loader.get_sub_folder(data_path)
             else:
                 _name=os.path.basename(data_path)
                 return os.path.splitext(_name)[0]
@@ -1047,7 +1048,7 @@ class Data_Extractor:
         if check_key_value(config, 'data_merging'):
             self.data_merging = config['data_merging']
         if check_key_value(config, 'check_same_folder'):
-            self.check_same_folder=config['data_merging']
+            self.check_same_folder=config['check_same_folder']
 
         self.save_path = os.path.join(self.base_path, self.folder_name)
         self.file_list_pathname = self.get_default_file_list_pathname(self.base_path, self.folder_name,
@@ -1172,7 +1173,7 @@ class Data_Extractor:
 
     def save_data_list(self, file_list):
         for file in tqdm.tqdm(file_list, desc='copy'):
-            idx = fl.get_file_name_index(file.file_name)
+            idx = loader.get_file_name_index(file.file_name)
             _name, image = self.video_data.get_frame(idx)
             _path_key = file.get_section_type(self.check_mode, self._section_mode_list)
             save_path = self.save_paths[_path_key]['base_data']
@@ -1187,12 +1188,13 @@ class Data_Extractor:
 
         file_list = self.open_file_dict_lists(self.file_list_pathname, mode=self.check_mode)
         self.save_paths = self.make_folder_dict(self.file_infors, self.save_path, self.folder_name, file_list,
-                                                self.check_mode, merging=self.data_merging)
+                                                self.check_mode, merging=self.data_merging,
+                                                same_folder=self.check_same_folder)
 
         if len(file_list) > 0:
             num_cores = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(processes=num_cores)
-            list(tqdm.tqdm(pool.imap(self.copy_data, file_list), total=len(file_list)))
+            with multiprocessing.Pool(processes=num_cores) as pool:
+                list(tqdm.tqdm(pool.imap(self.copy_data, file_list), total=len(file_list)))
 
 
 
@@ -1350,9 +1352,12 @@ class data_allocator():
             label_path = self.item_confs[item]['label_path']
             label_ext = self.item_confs[item]['label_ext']
             num_data = self.item_confs[item]['num_data']
+            check_shuffle = self.item_confs[item].get('shuffle', False)
             loader.make_folder(out_path)
 
             paired_list = loader.get_paired_file_list_single_folder(data_path, label_path, valid_exts, label_ext)
+            if check_shuffle:
+                paired_list = dictionary_shffle(paired_list)
             split_data = self.get_split_data(paired_list, num_data, out_path)
             self.copy_split_data(split_data)
 

@@ -17,7 +17,7 @@ Python 3.9 이상 환경을 권장합니다.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install numpy opencv-python tqdm
+pip install -r requirements.txt
 ```
 
 OpenCV GUI 창을 사용하므로, 화면이 있는 로컬 환경에서 실행해야 합니다.
@@ -45,23 +45,40 @@ DATASET_ROOT/
 
 [1_select_sample.py](1_select_sample.py)는 이미지와 bbox 라벨을 함께 보여주는 확인용 플레이어입니다.
 
-실행 전 `base_path`를 자신의 데이터셋 루트 경로로 수정합니다.
+기본 실행:
 
-```python
-base_path = "C:/Project/dataset/20260514T080008Z-3-001"
+```bash
+python 1_select_sample.py --base-path /path/to/DATASET_ROOT
 ```
 
-클래스 정보와 색상도 데이터셋에 맞게 수정합니다.
+`--target`을 생략하면 데이터셋 루트 폴더명이 체크포인트와 체크 목록 파일 이름에 사용됩니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_ROOT \
+  --target 20260514T080008Z-3-001
+```
+
+이미지/라벨 폴더명이 기본값인 `images`, `bbox`와 다르면 아래처럼 지정합니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_ROOT \
+  --image-sub-path images \
+  --label-sub-path bbox
+```
+
+클래스 정보와 색상은 현재 스크립트 안의 아래 값을 데이터셋에 맞게 수정합니다.
 
 ```python
 obj_cls = {"BG": 0, "cup": 1, "pedestrian": 2}
 obj_color = [[0, 0, 0], [255, 0, 255], [255, 255, 0]]
 ```
 
-실행:
+사용 가능한 옵션은 다음 명령으로 확인할 수 있습니다.
 
 ```bash
-python 1_select_sample.py
+python 1_select_sample.py --help
 ```
 
 ### 주요 단축키
@@ -95,41 +112,36 @@ DATASET_ROOT/
   {target}_check_file_list.txt
 ```
 
-`target`은 예제 코드에서 아래 값으로 지정됩니다.
-
-```python
-target = "20260514T080008Z-3-001"
-```
+`target`은 `--target`으로 지정하거나, 생략 시 데이터셋 루트 폴더명으로 자동 지정됩니다.
 
 ## 2. 체크한 데이터 추출
 
 [2_data_extract_test.py](2_data_extract_test.py)는 저장된 체크 목록을 기준으로 이미지와 라벨을 별도 폴더로 복사하거나 이동합니다.
 
-실행 전 `base_path`, 클래스 정보, 라벨 설정을 [1_select_sample.py](1_select_sample.py)와 동일하게 맞춥니다.
-
-```python
-base_path = "C:/Project/dataset/20260514T080008Z-3-001"
-```
-
-실행:
+기본 실행:
 
 ```bash
-python 2_data_extract_test.py
+python 2_data_extract_test.py --base-path /path/to/DATASET_ROOT
 ```
 
-기본 설정은 다음과 같습니다.
+체크 목록 파일을 직접 지정하려면 `--file-list-pathname`을 사용합니다.
 
-```python
-'check_mode': "list"
-'check_copy': True
-'data_merging': False
-'check_same_folder': True
+```bash
+python 2_data_extract_test.py \
+  --base-path /path/to/DATASET_ROOT \
+  --file-list-pathname /path/to/check_file_list.txt
 ```
 
-- `check_mode`: 읽을 체크 목록 타입입니다. 예제는 `list` 모드입니다.
-- `check_copy`: `True`이면 복사, `False`이면 이동합니다.
-- `data_merging`: 타입별 결과를 한 폴더로 합칠지 여부입니다.
-- `check_same_folder`: 이미지와 라벨을 같은 결과 폴더에 저장할지 여부입니다.
+주요 옵션:
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--target` | 체크 목록 파일 이름에 사용할 세션 이름. 생략 시 데이터셋 루트 폴더명 |
+| `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_ROOT/{target}` |
+| `--check-mode` | `list` 또는 `pos` |
+| `--move` | 복사 대신 이동 |
+| `--data-merging` | 타입별 결과를 한 폴더로 합침 |
+| `--separate-folders` | 이미지와 라벨을 각각 하위 폴더에 저장 |
 
 기본 출력 경로는 아래와 같습니다.
 
@@ -145,31 +157,32 @@ DATASET_ROOT/
 
 [3_data_allocation.py](3_data_allocation.py)는 이미지와 라벨 쌍을 일정 개수 단위로 나누어 task 폴더를 만듭니다.
 
-실행 전 아래 경로를 데이터셋에 맞게 수정합니다.
-
-```python
-sample = {
-    "items": ["1"],
-    "out_path": "C:/Project/dataset/20260514T080008Z-3-001/task",
-    "check_copy": True,
-    "1": {
-        "num_data": 5,
-        "data_path": "C:/Project/dataset/20260514T080008Z-3-001/images",
-        "valid_exts": ["jpg", "png"],
-        "label_path": "C:/Project/dataset/20260514T080008Z-3-001/bbox",
-        "label_ext": ".json",
-        "shuffle": False
-    },
-}
-```
-
-실행:
+기본 실행:
 
 ```bash
-python 3_data_allocation.py
+python 3_data_allocation.py --base-path /path/to/DATASET_ROOT
 ```
 
-예를 들어 `num_data`가 `5`이면 이미지/라벨 쌍을 5개씩 나누어 아래처럼 저장합니다.
+예를 들어 이미지/라벨 쌍을 100개씩 나누려면:
+
+```bash
+python 3_data_allocation.py \
+  --base-path /path/to/DATASET_ROOT \
+  --num-data 100
+```
+
+주요 옵션:
+
+| 옵션 | 설명 |
+| --- | --- |
+| `--out-path` | task 출력 루트. 생략 시 `DATASET_ROOT/task` |
+| `--item` | task item 이름. 기본값은 `1` |
+| `--num-data` | task 폴더 하나에 넣을 이미지/라벨 쌍 개수 |
+| `--valid-exts` | 쉼표로 구분한 이미지 확장자. 기본값은 `jpg,png` |
+| `--label-ext` | 라벨 확장자. 기본값은 `.json` |
+| `--shuffle` | 분할 전에 파일 순서를 섞음 |
+
+예를 들어 `--num-data 5`이면 이미지/라벨 쌍을 5개씩 나누어 아래처럼 저장합니다.
 
 ```text
 task/
@@ -225,8 +238,17 @@ file_config = {
 
 ## 현재 구현 기준의 주의사항
 
-- 샘플 스크립트의 경로는 현재 하드코딩되어 있으므로 실행 전에 직접 수정해야 합니다.
+- 데이터셋 경로는 `--base-path`로 지정합니다.
+- 클래스 이름과 bbox 색상은 아직 스크립트 내부의 `obj_cls`, `obj_color` 값을 수정해서 사용합니다.
 - Labelme 라벨은 `rectangle` shape 중심으로 처리됩니다.
 - 이미지 파일 확장자는 기본적으로 `jpg`, `gif`, `png`, `tga`, `jpeg`, `JPG`, `bmp`를 찾습니다.
 - OpenCV 창을 띄우기 때문에 서버나 headless 환경에서는 별도 설정 없이 실행하기 어렵습니다.
 - public 저장소에 올리지 않아야 하는 로컬 설정, IDE 설정, 캐시 파일은 `.gitignore`에 포함되어 있습니다.
+
+## 변경 사항 메모
+
+최근 버전에서는 다음 정리를 반영했습니다.
+
+- `requirements.txt` 추가
+- 세 실행 스크립트의 Windows 하드코딩 경로 제거 및 CLI 인자화
+- bbox 영역 교차 계산, 파일명 생성, shuffle, 추출 폴더 설정 관련 런타임 버그 수정
