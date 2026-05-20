@@ -14,13 +14,31 @@
 
 Python 3.9 이상 환경을 권장합니다.
 
+macOS / Ubuntu:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-OpenCV GUI 창을 사용하므로, 화면이 있는 로컬 환경에서 실행해야 합니다.
+Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Windows cmd:
+
+```bat
+py -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+설치 후 가상환경이 활성화된 상태에서는 `python` 명령으로 스크립트를 실행합니다.
 
 ## 데이터셋 구조
 
