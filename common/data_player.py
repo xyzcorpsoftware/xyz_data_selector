@@ -200,9 +200,10 @@ class Operation_Key:
     def get_base_check_color(self):
         return self.type_color[0]
 
-def open_file_list(data_path, data_type='image'):
+def open_file_list(data_path, data_type='image', valid_exts=None):
     if data_type == 'image':
-        valid_exts = ["jpg", "gif", "png", "tga", "jpeg", "JPG", "bmp"]
+        if valid_exts is None:
+            valid_exts = ["jpg", "gif", "png", "tga", "jpeg", "JPG", "bmp"]
         data_lists = loader.get_files_from_folder(data_path, valid_exts=valid_exts, check_list=True)
         num_frames = len(data_lists)
         print(data_path)
@@ -229,6 +230,7 @@ class File_infor:
         self.prefix = None
         self.label_color = None
         self.class_infor = None
+        self.valid_exts = None
         #self.draw_obj = False
         #self.draw_baseline = False
         self.sub_path = None
@@ -249,6 +251,7 @@ class File_infor:
         self.prefix = None
         self.label_color = None
         self.class_infor = None
+        self.valid_exts = None
         #self.draw_obj = False
         #self.draw_baseline = False
         #self.roi_dict = None
@@ -276,6 +279,9 @@ class File_infor:
             self.label_color = config['label_color']
         if check_key_value(config, 'draw_place_name'):
             self.draw_place_name = config['draw_place_name']
+
+        if check_key_value(config, 'valid_exts'):
+            self.valid_exts = config['valid_exts']
 
 
         #if check_key_value(config, 'roi'):
@@ -592,8 +598,8 @@ class Player_Base:
 
         if self._play_data_type in self._image_type_list:
             self._data_list, self._num_total_frames = open_file_list(self._file_infors['base_data'].data_path,
-                                                                self._file_infors['base_data'].data_type)
-            # print("test", os.path.splitext(self._data_list[0])[0].split('_')[-1])
+                                                                self._file_infors['base_data'].data_type,
+                                                                self._file_infors['base_data'].valid_exts)
             print("#Loading data %d"%(self._num_total_frames))
             if check_sorting:
                 if self._play_data_type == 'index_image':
@@ -849,19 +855,17 @@ class Label_Player(Player_Base):
                     "label": {
                         "sub_path": "bbox",
                         "type": "Labelme_BBox",
-                        "prefix_name": "Output",
-                        "label_color": [[0, 0, 0], [255, 255, 255], [0, 255, 255], [0, 0, 255], [0, 255, 0],
-                                        [102, 102, 255]],
-                        "class_infor": {"BG": 0, "cup": 1, "person": 2},
+                        "prefix_name": "",
+                        "label_color": [[0, 0, 0]],
+                        "class_infor": {"BG": 0},
                         'check_draw_objs': False,
-                        "draw_place_name": None,
+                        "draw_place_name": "base_data",
                         "base_size": None
 
                     }
                 }
 
         self.set_file_configs(config, base_data_conf, sub_data_conf, name)
-        print("test")
 
     def check_file_load(self):
         if self._current_frame != self._previous_frame:
@@ -1019,8 +1023,8 @@ class Data_Extractor:
 
                 "Labelme_BBox": {
                     "sub_path": "bbox",
-                    "type": "bbox",
-                    "prefix_name": "LidarInput",
+                    "type": "Labelme_BBox",
+                    "prefix_name": "",
                     "label_color": None,
                     "class_infor": None
                 }
@@ -1324,7 +1328,6 @@ class data_allocator():
             split_data = self.get_split_data(paired_list, num_data, out_path)
             self.copy_split_data(split_data)
             # print(alloc_data)
-            # print("test")
 
 
     def run_single_data_task_allocating(self):

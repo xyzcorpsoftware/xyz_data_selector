@@ -20,7 +20,7 @@ if __name__ == '__main__':
     args = parse_args()
     from common.data_player import data_allocator
 
-    print("a2z task data allocator")
+    print("xyz data task allocator")
 
     out_path = args.out_path or os.path.join(args.base_path, "task")
     item = args.item

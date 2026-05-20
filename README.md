@@ -86,11 +86,45 @@ python 1_select_sample.py \
   --label-sub-path bbox
 ```
 
-클래스 정보와 색상은 현재 스크립트 안의 아래 값을 데이터셋에 맞게 수정합니다.
+이미지 확장자를 지정하려면 `--valid-exts`를 사용합니다.
 
-```python
-obj_cls = {"BG": 0, "cup": 1, "pedestrian": 2}
-obj_color = [[0, 0, 0], [255, 0, 255], [255, 255, 0]]
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_ROOT \
+  --valid-exts jpg,png,jpeg,bmp
+```
+
+클래스 이름과 bbox 색상은 JSON 파일로 분리할 수 있습니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_ROOT \
+  --class-config examples/class_config.json
+```
+
+`examples/class_config.json` 형식:
+
+```json
+{
+  "classes": {
+    "BG": 0,
+    "cup": 1,
+    "pedestrian": 2
+  },
+  "colors": [
+    [0, 0, 0],
+    [255, 0, 255],
+    [255, 255, 0]
+  ]
+}
+```
+
+`1`-`9` 체크 타입의 표시 이름은 별도 JSON으로 지정할 수 있습니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_ROOT \
+  --type-labels examples/type_labels.json
 ```
 
 사용 가능한 옵션은 다음 명령으로 확인할 수 있습니다.
@@ -156,6 +190,7 @@ python 2_data_extract_test.py \
 | --- | --- |
 | `--target` | 체크 목록 파일 이름에 사용할 세션 이름. 생략 시 데이터셋 루트 폴더명 |
 | `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_ROOT/{target}` |
+| `--class-config` | 클래스 이름과 bbox 색상 JSON 파일 |
 | `--check-mode` | `list` 또는 `pos` |
 | `--move` | 복사 대신 이동 |
 | `--data-merging` | 타입별 결과를 한 폴더로 합침 |
@@ -215,7 +250,7 @@ task/
 
 ## 설정 파일 구조
 
-세 스크립트는 공통적으로 `base_data`와 `sub_data` 설정을 사용합니다.
+샘플 확인과 데이터 추출 스크립트는 공통적으로 `base_data`와 `sub_data` 설정을 사용합니다.
 
 ```python
 file_config = {
@@ -226,6 +261,7 @@ file_config = {
         "label_color": None,
         "class_infor": None,
         "roi_list": None,
+        "valid_exts": ["jpg", "gif", "png", "tga", "jpeg", "JPG", "bmp"],
     },
     "sub_data": {
         "Labelme_BBox": {
@@ -233,8 +269,8 @@ file_config = {
             "type": "Labelme_BBox",
             "path": None,
             "prefix_name": "",
-            "label_color": obj_color,
-            "class_infor": obj_cls,
+            "label_color": label_colors,
+            "class_infor": class_info,
             "check_draw_objs": False,
             "draw_place_name": "base_data",
             "draw_roi_name": None,
@@ -257,7 +293,7 @@ file_config = {
 ## 현재 구현 기준의 주의사항
 
 - 데이터셋 경로는 `--base-path`로 지정합니다.
-- 클래스 이름과 bbox 색상은 아직 스크립트 내부의 `obj_cls`, `obj_color` 값을 수정해서 사용합니다.
+- 클래스 이름과 bbox 색상은 `--class-config` JSON 파일로 지정합니다.
 - Labelme 라벨은 `rectangle` shape 중심으로 처리됩니다.
 - 이미지 파일 확장자는 기본적으로 `jpg`, `gif`, `png`, `tga`, `jpeg`, `JPG`, `bmp`를 찾습니다.
 - OpenCV 창을 띄우기 때문에 서버나 headless 환경에서는 별도 설정 없이 실행하기 어렵습니다.
@@ -269,4 +305,5 @@ file_config = {
 
 - `requirements.txt` 추가
 - 세 실행 스크립트의 Windows 하드코딩 경로 제거 및 CLI 인자화
+- 클래스/색상 설정과 체크 타입 라벨의 JSON 파일 분리
 - bbox 영역 교차 계산, 파일명 생성, shuffle, 추출 폴더 설정 관련 런타임 버그 수정

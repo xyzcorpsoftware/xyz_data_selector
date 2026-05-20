@@ -10,6 +10,7 @@ def parse_args():
     parser.add_argument("--file-list-pathname", help="Explicit check-list file path to read.")
     parser.add_argument("--image-sub-path", default="images", help="Image folder under base path.")
     parser.add_argument("--label-sub-path", default="bbox", help="Labelme bbox folder under base path.")
+    parser.add_argument("--class-config", help="JSON file with classes and colors.")
     parser.add_argument("--check-mode", default="list", choices=["pos", "list"])
     parser.add_argument("--move", action="store_true", help="Move files instead of copying them.")
     parser.add_argument("--data-merging", action="store_true", help="Merge output into the same folder by type.")
@@ -25,66 +26,24 @@ def get_target_name(base_path, target):
 if __name__ == '__main__':
     args = parse_args()
     from common import data_player
+    from common.app_config import build_file_config, load_class_config
 
     print("xyz data extractor")
 
-    obj_cls = {"BG": 0, "cup": 1, "pedestrian": 2}
-    obj_color = [[0, 0, 0], [255, 0, 255], [255, 255, 0]]
-
-
-    file_config={
-         'base_data':
-            {
-                "sub_path": "images",
-                "type": "image",
-                "prefix_name": None,
-                "label_color": None,
-                "class_infor": None,
-                "roi_list": None,#to do list
-
-            },
-         'sub_data':
-            {
-                "Labelme_BBox":
-                {
-                    "sub_path": "bbox",
-                    "type": "Labelme_BBox",
-                    "path": None,
-                    "prefix_name": "",
-                    "label_color": obj_color,
-                    "class_infor": obj_cls,
-                    'check_draw_objs':False,
-                    "draw_place_name": "base_data",
-                    "draw_roi_name":None
-
-
-                }
-
-        }
-
-    }
-
-    #다이얼로그에서 읽어올 파라미터
     base_path=args.base_path
     file_list_pathname=args.file_list_pathname
 
     save_path=args.save_path
     target = get_target_name(base_path, args.target)
-    file_config['base_data']['sub_path'] = args.image_sub_path
-    file_config['sub_data']['Labelme_BBox']['sub_path'] = args.label_sub_path
+    class_info, label_colors = load_class_config(args.class_config)
+    file_config = build_file_config(args.image_sub_path, args.label_sub_path, class_info, label_colors)
 
-    for key in file_config['sub_data'].keys():
-        file_config['sub_data'][key]['path']=None
-
-
-    #class에 입력될 데이터
-    #['image'
     data1 = {
         target:
             {
                 "base_path": base_path,
                 "save_path": save_path,
-                'play_data_type': "image",  # [image, video, a2z_video]
+                'play_data_type': "image",  # [image, video]
                 "file_list_pathname":file_list_pathname,
                 'check_mode': args.check_mode,  # [pos, list]
                 "base_data": file_config['base_data'],
