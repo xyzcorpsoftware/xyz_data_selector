@@ -1,0 +1,12 @@
+.envrc
+.DS_Store
+
+__pycache__/
+*.py[cod]
+
+.idea/
+.vscode/
+
+.venv/
+venv/
+env/
