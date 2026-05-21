@@ -43,6 +43,14 @@ def format_cv_key(raw_key, key):
     return "key raw=%s normalized=%s char=%s" % (raw_key, key, repr(char))
 
 
+def match_cv_key(raw_key, key, primary, aliases=None):
+    if key == primary or raw_key == primary:
+        return True
+    if aliases is None:
+        return False
+    return key in aliases or raw_key in aliases
+
+
 class Type_list:
     def __init__(self, config=None):
         self._txt_type_list = ['Kitti_BBox']
@@ -72,6 +80,8 @@ class Operation_Key:
     def __init__(self, key_path=None):
         self.prev = ord('a')
         self.next = ord('d')
+        self.prev_aliases = [2424832, 65361, 63234, 81]
+        self.next_aliases = [2555904, 65363, 63235, 83]
         self.skip_prev = ord('f')
         self.skip_next = ord('h')
         self.skip_frame = 10
@@ -123,6 +133,12 @@ class Operation_Key:
 
         if check_key_value(config, 'next'):
             self.next = ord(config['next'])
+
+        if check_key_value(config, 'prev_aliases'):
+            self.prev_aliases = config['prev_aliases']
+
+        if check_key_value(config, 'next_aliases'):
+            self.next_aliases = config['next_aliases']
 
         if check_key_value(config, 'skip_prev'):
             self.skip_prev = ord(config['skip_prev'])
@@ -423,6 +439,7 @@ class Player_Base:
         self._check_point_pathname = None
         self.save_frame_gap=1
         self.debug_keys = False
+        self._updating_trackbar = False
 
     def get_base_path(self, base_pathname, play_data_type):
         if play_data_type in self._image_type_list:
@@ -776,24 +793,20 @@ class Player_Base:
             cv2.destroyAllWindows()
             self.debug_command("exit")
             return -1
-        if cmd == self._op_key.prev:
+        if match_cv_key(raw_cmd, cmd, self._op_key.prev, self._op_key.prev_aliases):
             self.set_next_frame_number(self._num_total_frames, -1)
-            cv2.waitKey(1)
             self.debug_command("prev")
             return 1
-        if cmd == self._op_key.next:
+        if match_cv_key(raw_cmd, cmd, self._op_key.next, self._op_key.next_aliases):
             self.set_next_frame_number(self._num_total_frames, 1)
-            cv2.waitKey(1)
             self.debug_command("next")
             return 1
         if cmd == self._op_key.skip_next:
             self.set_next_frame_number(self._num_total_frames, self._op_key.skip_frame)
-            cv2.waitKey(1)
             self.debug_command("skip-next")
             return 1
         if cmd == self._op_key.skip_prev:
             self.set_next_frame_number(self._num_total_frames, -self._op_key.skip_frame)
-            cv2.waitKey(1)
             self.debug_command("skip-prev")
             return 1
 
@@ -920,23 +933,45 @@ class Label_Player(Player_Base):
             return 1
         return 0
 
+    def set_current_frame(self, frame):
+        if self._num_total_frames <= 0:
+            self._current_frame = 0
+            self._previous_frame = -1
+            return
+        self._current_frame = max(0, min(frame, self._num_total_frames - 1))
+
     def run_trackbar_frame(self, val):
-        self._current_frame = val
-        if self.check_file_load():
-            self.load_current_frame()
+        if self._updating_trackbar:
+            return
+        self.set_current_frame(val)
+        self.load_current_frame()
         self.show_data()
+
+    def update_trackbar_frame(self):
+        if not self._check_set_trackbar:
+            return
+        self._updating_trackbar = True
+        try:
+            cv2.setTrackbarPos('frame', self.window_name, self._current_frame)
+        finally:
+            self._updating_trackbar = False
 
     def load_current_frame(self):
         self._frame_name = self.get_frame_data(self._current_frame, self._num_total_frames)
         self._previous_frame = self._current_frame
         return self._frame_name
 
+    def refresh_current_frame(self):
+        self.load_current_frame()
+        self.update_trackbar_frame()
+        self.show_data()
+
     def init_player_window(self, total_frame, current_frame):
         self._frame_name = None
         base_infor = self._file_infors['base_data']
         sub_infor = self._file_infors['sub_data']
         if total_frame > 0:
-            self._current_frame = current_frame
+            self.set_current_frame(current_frame)
             self.load_current_frame()
             self.view_image = self.get_view_image(self._frame_name, base_infor, sub_infor, current_frame, total_frame,
                                                   fontScale=self.draw_font, merge_axis=self._img_merging_axis)
@@ -986,23 +1021,25 @@ class Label_Player(Player_Base):
 
             if self.check_file_load():
                 self.load_current_frame()
-                if self._check_set_trackbar:
-                    cv2.setTrackbarPos('frame', self.window_name, self._current_frame)
+                self.update_trackbar_frame()
 
             if self._check_continue:
-                cmd = cv2.waitKey(1)
+                cmd = cv2.waitKeyEx(1)
                 check_value = self.next_data_command(cmd, self._frame_name)
 
                 if self._current_frame < self._num_total_frames:
                     self.save_check_point(self._check_point_pathname)
                     self.prev_num_frame = self._current_frame
-                    self._current_frame += 1
-                    self._current_frame = min(self._current_frame, self._num_total_frames - 1)
+                    self.set_current_frame(self._current_frame + 1)
 
             else:
                 self.show_data()
-                cmd = cv2.waitKey(0)
+                cmd = cv2.waitKeyEx(30)
+                if cmd < 0:
+                    continue
                 check_value = self.next_data_command(cmd, self._frame_name)
+                if check_value == 1 and self.check_file_load():
+                    self.refresh_current_frame()
                 self.save_check_point(self._check_point_pathname)
 
                 if check_value == 2:
