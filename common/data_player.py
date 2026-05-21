@@ -70,12 +70,13 @@ class Operation_Key:
         self.save_file_list = ord('p')
 
         self.types = [ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('6'), ord('7'), ord('8'), ord('9')]
-        self._type_list = [1, 2, 3, 4, 5, 6, 7, 8]
+        self._type_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
         self.type_color = {1: [255, 127, 80], 2: [0, 255, 127], 3: [0, 255, 255], 4: [0, 191, 255], 5: [139, 0, 139],
                            6: [255, 0, 255], 7: [255, 20, 147],
                            8: [255, 228, 196], 9: [255, 228, 181], 0: [0, 0, 255]}
         self.run_continue_play = 32  # spacebar
         self.exit = 27
+        self.quit = ord('q')
         self.capture = ord('t')
         self._basic_check = ord('s')  # default type 0
 
@@ -152,6 +153,8 @@ class Operation_Key:
 
         if check_key_value(config, 'exit'):
             self.exit = config['exit']
+        if check_key_value(config, 'quit'):
+            self.quit = ord(config['quit'])
 
         if check_key_value(config, 'capture'):
             self.capture = ord(config['capture'])
@@ -743,7 +746,7 @@ class Player_Base:
                 self._check_continue = True
                 # self._check_set_trackbar = True
             return 1
-        if cmd == self._op_key.exit:
+        if cmd == self._op_key.exit or cmd == self._op_key.quit:
             cv2.destroyAllWindows()
             return -1
         if cmd == self._op_key.prev:
@@ -1196,9 +1199,8 @@ class Data_Extractor:
                                                 same_folder=self.check_same_folder)
 
         if len(file_list) > 0:
-            num_cores = multiprocessing.cpu_count()
-            with multiprocessing.Pool(processes=num_cores) as pool:
-                list(tqdm.tqdm(pool.imap(self.copy_data, file_list), total=len(file_list)))
+            for file_data in tqdm.tqdm(file_list, total=len(file_list)):
+                self.copy_data(file_data)
 
 
 
