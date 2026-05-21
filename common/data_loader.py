@@ -55,13 +55,14 @@ def get_files_from_folder(base_path, valid_exts=["jpg", "gif", "png", "tga", "jp
         file_lists = OrderedDict()
     total_data = 0
     for path, dirs, files in os.walk(base_path):
+        dirs.sort()
         file_list = []
         _dir = path.replace('\\', '/')
         upper_path = _dir.split('/')[-1]
         sub_dir = _dir.replace(base_path, '').strip('/')
 
         if upper_path not in except_foders:
-            for filename in files:
+            for filename in sorted(files):
                 ext = filename.split('.')[-1]
                 if ext in valid_exts:
                     if check_sub_dir:
@@ -71,6 +72,7 @@ def get_files_from_folder(base_path, valid_exts=["jpg", "gif", "png", "tga", "jp
                     else:
                         file_list.append(filename)
             if len(file_list) > 0:
+                file_list.sort()
                 total_data += len(file_list)
                 if check_list:
                     file_lists.extend(file_list)
