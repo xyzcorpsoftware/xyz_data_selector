@@ -75,8 +75,7 @@ class Operation_Key:
                            6: [255, 0, 255], 7: [255, 20, 147],
                            8: [255, 228, 196], 9: [255, 228, 181], 0: [0, 0, 255]}
         self.run_continue_play = 32  # spacebar
-        self.exit = 27
-        self.quit = ord('q')
+        self.exit = ord('q')
         self.capture = ord('t')
         self._basic_check = ord('s')  # default type 0
 
@@ -152,9 +151,7 @@ class Operation_Key:
             self.run_continue_play = config['run_continue_play']
 
         if check_key_value(config, 'exit'):
-            self.exit = config['exit']
-        if check_key_value(config, 'quit'):
-            self.quit = ord(config['quit'])
+            self.exit = ord(config['exit']) if isinstance(config['exit'], str) else config['exit']
 
         if check_key_value(config, 'capture'):
             self.capture = ord(config['capture'])
@@ -340,7 +337,6 @@ class File_infor:
         else:
             _data_pathname = loader.get_target_file_name(file_name, target_prefix, self.prefix, data_path=self.data_path,
                                                 change_ext=self._file_ext)
-            print(_data_pathname,self.data_type)
             self.data = loader.Open_Label_Data(self.data_type, _data_pathname, self.class_infor, self.label_color)
 
     def draw_data(self, image, roi=None, check_msg=False, thick=1, draw_font=1):
@@ -746,7 +742,7 @@ class Player_Base:
                 self._check_continue = True
                 # self._check_set_trackbar = True
             return 1
-        if cmd == self._op_key.exit or cmd == self._op_key.quit:
+        if cmd == self._op_key.exit:
             cv2.destroyAllWindows()
             return -1
         if cmd == self._op_key.prev:
@@ -878,15 +874,21 @@ class Label_Player(Player_Base):
     def run_trackbar_frame(self, val):
         self._current_frame = val
         if self.check_file_load():
-            self._frame_name = self.get_frame_data(self._current_frame, self._num_total_frames )
+            self.load_current_frame()
         self.show_data()
+
+    def load_current_frame(self):
+        self._frame_name = self.get_frame_data(self._current_frame, self._num_total_frames)
+        self._previous_frame = self._current_frame
+        return self._frame_name
 
     def init_player_window(self, total_frame, current_frame):
         self._frame_name = None
         base_infor = self._file_infors['base_data']
         sub_infor = self._file_infors['sub_data']
         if total_frame > 0:
-            self._frame_name = self.get_frame_data(current_frame, total_frame)
+            self._current_frame = current_frame
+            self.load_current_frame()
             self.view_image = self.get_view_image(self._frame_name, base_infor, sub_infor, current_frame, total_frame,
                                                   fontScale=self.draw_font, merge_axis=self._img_merging_axis)
             if check_value(self.view_image):
@@ -906,6 +908,13 @@ class Label_Player(Player_Base):
                                               fontScale=self.draw_font, merge_axis=self._img_merging_axis)
         if self.view_image is not None:
             cv2.imshow(self.window_name, self.view_image)
+
+    def is_window_open(self):
+        try:
+            return cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) >= 1
+        except cv2.error:
+            return False
+
     def run_player(self):
         self._current_frame = 0
         self._previous_frame = -1
@@ -922,12 +931,14 @@ class Label_Player(Player_Base):
         Run = self.init_player_window(self._num_total_frames, self._current_frame)
 
         while Run:
+            if not self.is_window_open():
+                self.save_check_point(self._check_point_pathname)
+                break
 
-            if self._check_set_trackbar and self.check_file_load():
-                cv2.setTrackbarPos('frame', self.window_name, self._current_frame)
-            else:
-                if self._check_set_trackbar and self.check_file_load():
-                    self._frame_name = self.get_frame_data(self._current_frame, self._num_total_frames)
+            if self.check_file_load():
+                self.load_current_frame()
+                if self._check_set_trackbar:
+                    cv2.setTrackbarPos('frame', self.window_name, self._current_frame)
 
             if self._check_continue:
                 cmd = cv2.waitKey(1)
