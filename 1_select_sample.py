@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument("--type-labels", help="JSON file mapping numeric check types to display labels.")
     parser.add_argument("--check-mode", default="pos", choices=["section", "excepted_section", "pos", "list"])
     parser.add_argument("--merging-axis", type=int, default=1, choices=[0, 1])
+    parser.add_argument("--debug-keys", action="store_true", help="Print OpenCV key values and matched commands.")
     return parser.parse_args()
 
 
@@ -53,6 +54,7 @@ if __name__ == "__main__":
                 'check_mode':args.check_mode, #[section, pos]
                 "check_point_path":None,
                 "merging_axis":args.merging_axis,
+                "debug_keys": args.debug_keys,
                 #"save_frame_gap":2,
                 "base_data": file_config['base_data'],
                 'sub_data': file_config['sub_data'],

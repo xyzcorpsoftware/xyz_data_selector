@@ -26,6 +26,23 @@ def check_key_value(config, key):
 
     return False
 
+
+def normalize_cv_key(key):
+    if key is None or key < 0:
+        return key
+    return key & 0xFF
+
+
+def format_cv_key(raw_key, key):
+    if key is None or key < 0:
+        char = ""
+    elif 32 <= key <= 126:
+        char = chr(key)
+    else:
+        char = ""
+    return "key raw=%s normalized=%s char=%s" % (raw_key, key, repr(char))
+
+
 class Type_list:
     def __init__(self, config=None):
         self._txt_type_list = ['Kitti_BBox']
@@ -405,6 +422,7 @@ class Player_Base:
         self._holding_check=False #holding checking button when operating schroll
         self._check_point_pathname = None
         self.save_frame_gap=1
+        self.debug_keys = False
 
     def get_base_path(self, base_pathname, play_data_type):
         if play_data_type in self._image_type_list:
@@ -464,6 +482,13 @@ class Player_Base:
 
         if check_key_value(config, "save_frame_gap"):
             self.save_frame_gap = config['save_frame_gap']
+
+        if check_key_value(config, "debug_keys"):
+            self.debug_keys = bool(config["debug_keys"])
+
+    def debug_command(self, command):
+        if self.debug_keys:
+            print("command=%s frame=%d" % (command, self._current_frame), flush=True)
 
     def open_check_point(self, data_pathname, total_num_data=None):
         self._resize_ratio_width = 1.
@@ -734,6 +759,10 @@ class Player_Base:
             self._previous_frame = total_frame - 2
 
     def next_data_command(self, cmd, file_name):
+        raw_cmd = cmd
+        cmd = normalize_cv_key(cmd)
+        if self.debug_keys and cmd != -1:
+            print(format_cv_key(raw_cmd, cmd), flush=True)
         if cmd == self._op_key.run_continue_play:
             if self._check_continue == True:
                 self._check_continue = False
@@ -741,25 +770,31 @@ class Player_Base:
             else:
                 self._check_continue = True
                 # self._check_set_trackbar = True
+            self.debug_command("toggle-play")
             return 1
         if cmd == self._op_key.exit:
             cv2.destroyAllWindows()
+            self.debug_command("exit")
             return -1
         if cmd == self._op_key.prev:
             self.set_next_frame_number(self._num_total_frames, -1)
             cv2.waitKey(1)
+            self.debug_command("prev")
             return 1
         if cmd == self._op_key.next:
             self.set_next_frame_number(self._num_total_frames, 1)
             cv2.waitKey(1)
+            self.debug_command("next")
             return 1
         if cmd == self._op_key.skip_next:
             self.set_next_frame_number(self._num_total_frames, self._op_key.skip_frame)
             cv2.waitKey(1)
+            self.debug_command("skip-next")
             return 1
         if cmd == self._op_key.skip_prev:
             self.set_next_frame_number(self._num_total_frames, -self._op_key.skip_frame)
             cv2.waitKey(1)
+            self.debug_command("skip-prev")
             return 1
 
         if cmd == self._op_key.zoom_in:
@@ -767,27 +802,31 @@ class Player_Base:
             self._resize_ratio_height += self._op_key.zoom_ratio
             self._resize_ratio_width = min(self._op_key.zoom_max_ratio, self._resize_ratio_width)
             self._resize_ratio_height = min(self._op_key.zoom_max_ratio, self._resize_ratio_height)
+            self.debug_command("zoom-in")
             return 1
         if cmd == self._op_key.zoom_out:
             self._resize_ratio_width -= self._op_key.zoom_ratio
             self._resize_ratio_height -= self._op_key.zoom_ratio
             self._resize_ratio_width = max(self._op_key.zoom_min_ratio, self._resize_ratio_width)
             self._resize_ratio_height = max(self._op_key.zoom_min_ratio, self._resize_ratio_height)
+            self.debug_command("zoom-out")
             return 1
-
 
         if cmd in self._op_key.types:
             if self._check_mode == 'pos':
                 _type = self._op_key.get_key_type(cmd)
                 self._check_file_dict.add_modify_del_by_name(file_name, self._current_frame, _type)
+                self.debug_command("type-%s" % _type)
             return 1
         if cmd == self._op_key._basic_check:
             self._basic_check_dict.add_modify_del_by_name(file_name, self._current_frame, check_del=True)
+            self.debug_command("basic-check")
             return 1
 
         if cmd == self._op_key.del_section:
             if self._check_mode == 'pos':
                 self._check_file_dict.del_by_name(file_name)
+            self.debug_command("delete-check")
             return 1
 
         if cmd == self._op_key.update_trackbar:
@@ -795,14 +834,17 @@ class Player_Base:
                 self._check_set_trackbar = True
             else:
                 self._check_set_trackbar = False
+            self.debug_command("toggle-trackbar")
             return 1
 
         if cmd == self._op_key.save_file_list:
             self.save_checked_file_list_data(self._file_infors['base_data'], self.window_name,
                                              frame_gap=self.save_frame_gap)
+            self.debug_command("save-file-list")
             return 1
 
         if cmd == self._op_key.capture:
+            self.debug_command("capture")
             return 2
 
         if cmd == self._op_key.show_msg:
@@ -810,20 +852,27 @@ class Player_Base:
                 self.show_msg = False
             else:
                 self.show_msg = True
+            self.debug_command("toggle-message")
             return 1
         if cmd == self._op_key.inc_draw_thick:
             self.draw_thick = min(self._op_key.max_thick, self.draw_thick + 1)
+            self.debug_command("increase-thick")
             return 1
         if cmd == self._op_key.dec_draw_thick:
             self.draw_thick = max(self._op_key.min_thick, self.draw_thick - 1)
+            self.debug_command("decrease-thick")
             return 1
         if cmd == self._op_key.inc_font_scale:
             self.draw_font = min(self._op_key.max_fontscale, self.draw_font + 0.1)
+            self.debug_command("increase-font")
             return 1
         if cmd == self._op_key.dec_font_scale:
             self.draw_font = max(self._op_key.min_fontscale, self.draw_font - 0.1)
+            self.debug_command("decrease-font")
             return 1
 
+        if self.debug_keys and cmd != -1:
+            self.debug_command("unhandled")
         return 0
 
 class Label_Player(Player_Base):

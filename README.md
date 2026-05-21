@@ -153,6 +153,14 @@ python 1_select_sample.py \
 python 1_select_sample.py --help
 ```
 
+키 입력이 의도대로 동작하지 않는지 확인하려면 `--debug-keys`를 붙여 실행합니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_FOLDER \
+  --debug-keys
+```
+
 ### 주요 단축키
 
 | 키 | 동작 |
@@ -175,6 +183,8 @@ python 1_select_sample.py --help
 | `Space` | 자동 재생 토글 |
 | `q` | 종료 |
 
+키 입력은 터미널이 아니라 OpenCV 이미지 창에 포커스가 있을 때 동작합니다.
+
 체크포인트와 체크 목록은 데이터셋 루트에 저장됩니다.
 
 ```text
@@ -185,6 +195,8 @@ DATASET_FOLDER/
 ```
 
 `target`은 `--target`으로 지정하거나, 생략 시 데이터셋 폴더명으로 자동 지정됩니다.
+
+항상 첫 프레임부터 다시 시작하려면 `{target}_check_point.json` 파일을 삭제하면 됩니다.
 
 ## 2. 체크한 데이터 추출
 
