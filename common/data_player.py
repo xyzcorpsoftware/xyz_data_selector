@@ -81,7 +81,7 @@ class Operation_Key:
         self.prev = ord('a')
         self.next = ord('d')
         self.prev_aliases = [2424832, 65361, 63234, 81, 12609]
-        self.next_aliases = [2555904, 65363, 63235, 83, 12615]
+        self.next_aliases = [2555904, 65363, 63235, 83, 12615, 2]
         self.skip_prev = ord('f')
         self.skip_next = ord('h')
         self.skip_prev_aliases = [12601]
@@ -109,7 +109,7 @@ class Operation_Key:
                            8: [255, 228, 196], 9: [255, 228, 181], 0: [0, 0, 255]}
         self.run_continue_play = 32  # spacebar
         self.exit = ord('q')
-        self.exit_aliases = [27, 12610]
+        self.exit_aliases = [27, 12610, 12]
         self.capture = ord('t')
         self.capture_aliases = [12613]
         self._basic_check = ord('s')  # default type 0
