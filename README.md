@@ -42,13 +42,13 @@ pip install -r requirements.txt
 
 ## 데이터셋 구조
 
-기본 예제는 아래와 같은 폴더 구조를 기대합니다.
+이 도구는 수집 세션 하나를 하나의 데이터셋 폴더로 다룹니다. 데이터셋 폴더 이름은 자유롭게 정해도 되지만, 그 안에는 기본적으로 `images/`와 `bbox/`가 있어야 합니다.
 
 ```text
-DATASET_ROOT/
+DATASET_FOLDER/
   images/
-    sample_001.jpg
-    sample_002.jpg
+    sample_001.png
+    sample_002.png
   bbox/
     sample_001.json
     sample_002.json
@@ -59,6 +59,24 @@ DATASET_ROOT/
 - 이미지 파일명과 라벨 파일명은 확장자를 제외하고 같아야 합니다.
 - 현재 기본 라벨 타입은 `Labelme_BBox`이며, Labelme의 `rectangle` shape를 bbox로 읽습니다.
 
+여러 수집 세션을 한 상위 폴더에 모아두는 경우에는, 실행할 때 상위 폴더가 아니라 개별 데이터셋 폴더를 `--base-path`로 지정합니다.
+
+```text
+datasets/
+  SESSION_A/
+    images/
+    bbox/
+  SESSION_B/
+    images/
+    bbox/
+```
+
+예를 들어 `SESSION_A`를 확인하려면:
+
+```bash
+python 1_select_sample.py --base-path /path/to/datasets/SESSION_A
+```
+
 ## 1. 샘플 확인 및 선택
 
 [1_select_sample.py](1_select_sample.py)는 이미지와 bbox 라벨을 함께 보여주는 확인용 플레이어입니다.
@@ -66,22 +84,24 @@ DATASET_ROOT/
 기본 실행:
 
 ```bash
-python 1_select_sample.py --base-path /path/to/DATASET_ROOT
+python 1_select_sample.py --base-path /path/to/DATASET_FOLDER
 ```
 
-`--target`을 생략하면 데이터셋 루트 폴더명이 체크포인트와 체크 목록 파일 이름에 사용됩니다.
+기본 클래스 설정은 `cup` 라벨을 바로 볼 수 있도록 준비되어 있습니다. 지금 수집하는 컵 데이터셋처럼 라벨이 `cup`이면 `--class-config` 없이 실행해도 됩니다.
+
+`--target`을 생략하면 데이터셋 폴더명이 체크포인트와 체크 목록 파일 이름에 사용됩니다.
 
 ```bash
 python 1_select_sample.py \
-  --base-path /path/to/DATASET_ROOT \
-  --target 20260514T080008Z-3-001
+  --base-path /path/to/DATASET_FOLDER \
+  --target my_review_session
 ```
 
 이미지/라벨 폴더명이 기본값인 `images`, `bbox`와 다르면 아래처럼 지정합니다.
 
 ```bash
 python 1_select_sample.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --image-sub-path images \
   --label-sub-path bbox
 ```
@@ -90,15 +110,15 @@ python 1_select_sample.py \
 
 ```bash
 python 1_select_sample.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --valid-exts jpg,png,jpeg,bmp
 ```
 
-클래스 이름과 bbox 색상은 JSON 파일로 분리할 수 있습니다.
+기본값과 다른 클래스 이름 또는 색상을 쓰는 데이터셋은 JSON 파일로 설정을 분리합니다.
 
 ```bash
 python 1_select_sample.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --class-config examples/class_config.json
 ```
 
@@ -123,7 +143,7 @@ python 1_select_sample.py \
 
 ```bash
 python 1_select_sample.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --type-labels examples/type_labels.json
 ```
 
@@ -158,13 +178,13 @@ python 1_select_sample.py --help
 체크포인트와 체크 목록은 데이터셋 루트에 저장됩니다.
 
 ```text
-DATASET_ROOT/
+DATASET_FOLDER/
   {target}_check_point.json
   {target}_base_check_file_list.txt
   {target}_check_file_list.txt
 ```
 
-`target`은 `--target`으로 지정하거나, 생략 시 데이터셋 루트 폴더명으로 자동 지정됩니다.
+`target`은 `--target`으로 지정하거나, 생략 시 데이터셋 폴더명으로 자동 지정됩니다.
 
 ## 2. 체크한 데이터 추출
 
@@ -173,14 +193,14 @@ DATASET_ROOT/
 기본 실행:
 
 ```bash
-python 2_data_extract_test.py --base-path /path/to/DATASET_ROOT
+python 2_data_extract_test.py --base-path /path/to/DATASET_FOLDER
 ```
 
 체크 목록 파일을 직접 지정하려면 `--file-list-pathname`을 사용합니다.
 
 ```bash
 python 2_data_extract_test.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --file-list-pathname /path/to/check_file_list.txt
 ```
 
@@ -188,8 +208,8 @@ python 2_data_extract_test.py \
 
 | 옵션 | 설명 |
 | --- | --- |
-| `--target` | 체크 목록 파일 이름에 사용할 세션 이름. 생략 시 데이터셋 루트 폴더명 |
-| `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_ROOT/{target}` |
+| `--target` | 체크 목록 파일 이름에 사용할 세션 이름. 생략 시 데이터셋 폴더명 |
+| `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_FOLDER/{target}` |
 | `--class-config` | 클래스 이름과 bbox 색상 JSON 파일 |
 | `--check-mode` | `list` 또는 `pos` |
 | `--move` | 복사 대신 이동 |
@@ -199,7 +219,7 @@ python 2_data_extract_test.py \
 기본 출력 경로는 아래와 같습니다.
 
 ```text
-DATASET_ROOT/
+DATASET_FOLDER/
   {target}/
     0_{target}_{type}/
       images 또는 이미지 파일
@@ -213,14 +233,14 @@ DATASET_ROOT/
 기본 실행:
 
 ```bash
-python 3_data_allocation.py --base-path /path/to/DATASET_ROOT
+python 3_data_allocation.py --base-path /path/to/DATASET_FOLDER
 ```
 
 예를 들어 이미지/라벨 쌍을 100개씩 나누려면:
 
 ```bash
 python 3_data_allocation.py \
-  --base-path /path/to/DATASET_ROOT \
+  --base-path /path/to/DATASET_FOLDER \
   --num-data 100
 ```
 
@@ -228,7 +248,7 @@ python 3_data_allocation.py \
 
 | 옵션 | 설명 |
 | --- | --- |
-| `--out-path` | task 출력 루트. 생략 시 `DATASET_ROOT/task` |
+| `--out-path` | task 출력 루트. 생략 시 `DATASET_FOLDER/task` |
 | `--item` | task item 이름. 기본값은 `1` |
 | `--num-data` | task 폴더 하나에 넣을 이미지/라벨 쌍 개수 |
 | `--valid-exts` | 쉼표로 구분한 이미지 확장자. 기본값은 `jpg,png` |
@@ -292,8 +312,8 @@ file_config = {
 
 ## 현재 구현 기준의 주의사항
 
-- 데이터셋 경로는 `--base-path`로 지정합니다.
-- 클래스 이름과 bbox 색상은 `--class-config` JSON 파일로 지정합니다.
+- `--base-path`에는 `images/`, `bbox/`를 포함하는 개별 데이터셋 폴더를 지정합니다.
+- 기본 클래스 설정은 `cup` 라벨을 포함합니다. 다른 클래스 체계를 쓰면 `--class-config` JSON 파일로 지정합니다.
 - Labelme 라벨은 `rectangle` shape 중심으로 처리됩니다.
 - 이미지 파일 확장자는 기본적으로 `jpg`, `gif`, `png`, `tga`, `jpeg`, `JPG`, `bmp`를 찾습니다.
 - OpenCV 창을 띄우기 때문에 서버나 headless 환경에서는 별도 설정 없이 실행하기 어렵습니다.
