@@ -80,21 +80,27 @@ class Operation_Key:
     def __init__(self, key_path=None):
         self.prev = ord('a')
         self.next = ord('d')
-        self.prev_aliases = [2424832, 65361, 63234, 81]
-        self.next_aliases = [2555904, 65363, 63235, 83]
+        self.prev_aliases = [2424832, 65361, 63234, 81, 12609]
+        self.next_aliases = [2555904, 65363, 63235, 83, 12615]
         self.skip_prev = ord('f')
         self.skip_next = ord('h')
+        self.skip_prev_aliases = [12601]
+        self.skip_next_aliases = [12631]
         self.skip_frame = 10
 
         self.zoom_in = ord('z')
         self.zoom_out = ord('c')
+        self.zoom_in_aliases = [12619]
+        self.zoom_out_aliases = [12618]
         self.zoom_ratio = 0.05
 
         self.section_start = ord('q')
         self.section_end = ord('e')
         self.del_section = ord('w')
+        self.del_section_aliases = [12616]
 
         self.save_file_list = ord('p')
+        self.save_file_list_aliases = [12628]
 
         self.types = [ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('6'), ord('7'), ord('8'), ord('9')]
         self._type_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -103,10 +109,14 @@ class Operation_Key:
                            8: [255, 228, 196], 9: [255, 228, 181], 0: [0, 0, 255]}
         self.run_continue_play = 32  # spacebar
         self.exit = ord('q')
+        self.exit_aliases = [27, 12610]
         self.capture = ord('t')
+        self.capture_aliases = [12613]
         self._basic_check = ord('s')  # default type 0
+        self.basic_check_aliases = [12596]
 
         self.show_msg = ord('m')
+        self.show_msg_aliases = [12641]
         self.update_trackbar = ord('/')
 
         self.inc_draw_thick = ord('>')
@@ -146,6 +156,12 @@ class Operation_Key:
         if check_key_value(config, 'skip_next'):
             self.skip_next = ord(config['skip_next'])
 
+        if check_key_value(config, 'skip_prev_aliases'):
+            self.skip_prev_aliases = config['skip_prev_aliases']
+
+        if check_key_value(config, 'skip_next_aliases'):
+            self.skip_next_aliases = config['skip_next_aliases']
+
         if check_key_value(config, 'skip_frame'):
             self.skip_frame = config['skip_frame']
 
@@ -154,6 +170,12 @@ class Operation_Key:
 
         if check_key_value(config, 'zoom_out'):
             self.zoom_out = ord(config['zoom_out'])
+
+        if check_key_value(config, 'zoom_in_aliases'):
+            self.zoom_in_aliases = config['zoom_in_aliases']
+
+        if check_key_value(config, 'zoom_out_aliases'):
+            self.zoom_out_aliases = config['zoom_out_aliases']
 
         if check_key_value(config, 'zoom_ratio'):
             self.zoom_ratio = config['zoom_ratio']
@@ -165,8 +187,12 @@ class Operation_Key:
             self.section_end = ord(config['section_end'])
         if check_key_value(config, 'del_section'):
             self.del_section = ord(config['del_section'])
+        if check_key_value(config, 'del_section_aliases'):
+            self.del_section_aliases = config['del_section_aliases']
         if check_key_value(config, 'save_file_list'):
             self.save_file_list = ord(config['save_file_list'])
+        if check_key_value(config, 'save_file_list_aliases'):
+            self.save_file_list_aliases = config['save_file_list_aliases']
         if check_key_value(config, 'types'):
             self.types = []
             for type in config['types']:
@@ -185,12 +211,18 @@ class Operation_Key:
 
         if check_key_value(config, 'exit'):
             self.exit = ord(config['exit']) if isinstance(config['exit'], str) else config['exit']
+        if check_key_value(config, 'exit_aliases'):
+            self.exit_aliases = config['exit_aliases']
 
         if check_key_value(config, 'capture'):
             self.capture = ord(config['capture'])
+        if check_key_value(config, 'capture_aliases'):
+            self.capture_aliases = config['capture_aliases']
 
         if check_key_value(config, '_basic_check'):
             self._basic_check = ord(config['_basic_check'])
+        if check_key_value(config, 'basic_check_aliases'):
+            self.basic_check_aliases = config['basic_check_aliases']
 
         if check_key_value(config, 'type_text'):
             self._type_text = config['type_text']
@@ -203,6 +235,8 @@ class Operation_Key:
 
         if check_key_value(config, 'show_msg'):
             self.show_msg = ord(config['show_msg'])
+        if check_key_value(config, 'show_msg_aliases'):
+            self.show_msg_aliases = config['show_msg_aliases']
         if check_key_value(config, 'update_trackbar'):
             self.update_trackbar = ord(config['update_trackbar'])
 
@@ -789,7 +823,7 @@ class Player_Base:
                 # self._check_set_trackbar = True
             self.debug_command("toggle-play")
             return 1
-        if cmd == self._op_key.exit:
+        if match_cv_key(raw_cmd, cmd, self._op_key.exit, self._op_key.exit_aliases):
             cv2.destroyAllWindows()
             self.debug_command("exit")
             return -1
@@ -801,23 +835,23 @@ class Player_Base:
             self.set_next_frame_number(self._num_total_frames, 1)
             self.debug_command("next")
             return 1
-        if cmd == self._op_key.skip_next:
+        if match_cv_key(raw_cmd, cmd, self._op_key.skip_next, self._op_key.skip_next_aliases):
             self.set_next_frame_number(self._num_total_frames, self._op_key.skip_frame)
             self.debug_command("skip-next")
             return 1
-        if cmd == self._op_key.skip_prev:
+        if match_cv_key(raw_cmd, cmd, self._op_key.skip_prev, self._op_key.skip_prev_aliases):
             self.set_next_frame_number(self._num_total_frames, -self._op_key.skip_frame)
             self.debug_command("skip-prev")
             return 1
 
-        if cmd == self._op_key.zoom_in:
+        if match_cv_key(raw_cmd, cmd, self._op_key.zoom_in, self._op_key.zoom_in_aliases):
             self._resize_ratio_width += self._op_key.zoom_ratio
             self._resize_ratio_height += self._op_key.zoom_ratio
             self._resize_ratio_width = min(self._op_key.zoom_max_ratio, self._resize_ratio_width)
             self._resize_ratio_height = min(self._op_key.zoom_max_ratio, self._resize_ratio_height)
             self.debug_command("zoom-in")
             return 1
-        if cmd == self._op_key.zoom_out:
+        if match_cv_key(raw_cmd, cmd, self._op_key.zoom_out, self._op_key.zoom_out_aliases):
             self._resize_ratio_width -= self._op_key.zoom_ratio
             self._resize_ratio_height -= self._op_key.zoom_ratio
             self._resize_ratio_width = max(self._op_key.zoom_min_ratio, self._resize_ratio_width)
@@ -831,12 +865,12 @@ class Player_Base:
                 self._check_file_dict.add_modify_del_by_name(file_name, self._current_frame, _type)
                 self.debug_command("type-%s" % _type)
             return 1
-        if cmd == self._op_key._basic_check:
+        if match_cv_key(raw_cmd, cmd, self._op_key._basic_check, self._op_key.basic_check_aliases):
             self._basic_check_dict.add_modify_del_by_name(file_name, self._current_frame, check_del=True)
             self.debug_command("basic-check")
             return 1
 
-        if cmd == self._op_key.del_section:
+        if match_cv_key(raw_cmd, cmd, self._op_key.del_section, self._op_key.del_section_aliases):
             if self._check_mode == 'pos':
                 self._check_file_dict.del_by_name(file_name)
             self.debug_command("delete-check")
@@ -850,17 +884,17 @@ class Player_Base:
             self.debug_command("toggle-trackbar")
             return 1
 
-        if cmd == self._op_key.save_file_list:
+        if match_cv_key(raw_cmd, cmd, self._op_key.save_file_list, self._op_key.save_file_list_aliases):
             self.save_checked_file_list_data(self._file_infors['base_data'], self.window_name,
                                              frame_gap=self.save_frame_gap)
             self.debug_command("save-file-list")
             return 1
 
-        if cmd == self._op_key.capture:
+        if match_cv_key(raw_cmd, cmd, self._op_key.capture, self._op_key.capture_aliases):
             self.debug_command("capture")
             return 2
 
-        if cmd == self._op_key.show_msg:
+        if match_cv_key(raw_cmd, cmd, self._op_key.show_msg, self._op_key.show_msg_aliases):
             if self.show_msg:
                 self.show_msg = False
             else:
