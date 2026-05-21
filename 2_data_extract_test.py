@@ -6,15 +6,16 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Extract checked image/label files.")
     parser.add_argument("--base-path", required=True, help="Dataset root path that contains images/ and bbox/.")
     parser.add_argument("--target", help="Session name used in saved check-list files. Defaults to base folder name.")
-    parser.add_argument("--save-path", help="Output path. Defaults to base_path/target.")
+    parser.add_argument("--save-path", help="Output path. Defaults to base_path/selected_dataset.")
     parser.add_argument("--file-list-pathname", help="Explicit check-list file path to read.")
     parser.add_argument("--image-sub-path", default="images", help="Image folder under base path.")
     parser.add_argument("--label-sub-path", default="bbox", help="Labelme bbox folder under base path.")
     parser.add_argument("--class-config", help="JSON file with classes and colors.")
-    parser.add_argument("--check-mode", default="list", choices=["pos", "list"])
+    parser.add_argument("--check-mode", default="pos", choices=["pos", "list"])
     parser.add_argument("--move", action="store_true", help="Move files instead of copying them.")
-    parser.add_argument("--data-merging", action="store_true", help="Merge output into the same folder by type.")
-    parser.add_argument("--separate-folders", action="store_true", help="Save image and label files into subfolders.")
+    parser.add_argument("--type-folders", action="store_true", help="Save selected files into type-specific folders.")
+    parser.add_argument("--data-merging", action="store_true", help="Deprecated: selected dataset output is merged by default.")
+    parser.add_argument("--separate-folders", action="store_true", help="Deprecated: images/ and bbox/ folders are used by default.")
     return parser.parse_args()
 
 
@@ -35,6 +36,8 @@ if __name__ == '__main__':
 
     save_path=args.save_path
     target = get_target_name(base_path, args.target)
+    if save_path is None:
+        save_path = os.path.join(base_path, "selected_dataset")
     class_info, label_colors = load_class_config(args.class_config)
     file_config = build_file_config(args.image_sub_path, args.label_sub_path, class_info, label_colors)
 
@@ -49,8 +52,8 @@ if __name__ == '__main__':
                 "base_data": file_config['base_data'],
                 'sub_data': file_config['sub_data'],
                 'check_copy': not args.move,
-                'data_merging': args.data_merging,
-                'check_same_folder': not args.separate_folders
+                'data_merging': not args.type_folders,
+                'check_same_folder': args.type_folders
             }
     }
 

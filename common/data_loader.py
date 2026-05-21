@@ -158,15 +158,14 @@ def get_file_name_index(file_name):
     return _index
 
 def save_checked_pos_file_dict(pathname, check_dict, check_type=True):
-    if check_dict._check_names!= {}:
-        with open(pathname, 'w') as f:
-            for _name, value in check_dict._check_names.items():
-                if check_type:
-                    _text = _name + ' ' + str(value['type'])
-                else:
-                    _text= _name
+    with open(pathname, 'w') as f:
+        for _name, value in check_dict._check_names.items():
+            if check_type:
+                _text = _name + ' ' + str(value['type'])
+            else:
+                _text= _name
 
-                print(_text, file=f)
+            print(_text, file=f)
 
 
 def Open_Labelme_Data(pathname, region_type='rectangle', class_dicts=None, color_list=None):

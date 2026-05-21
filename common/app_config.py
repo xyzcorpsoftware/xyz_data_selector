@@ -4,6 +4,17 @@ import json
 DEFAULT_CLASS_INFO = {"BG": 0, "cup": 1, "pedestrian": 2}
 DEFAULT_LABEL_COLORS = [[0, 0, 0], [255, 0, 255], [255, 255, 0]]
 DEFAULT_VALID_EXTS = ["jpg", "gif", "png", "tga", "jpeg", "JPG", "bmp"]
+DEFAULT_TYPE_LABELS = {
+    "1": "bbox_fix",
+    "2": "missing_object",
+    "3": "wrong_class",
+    "4": "needs_review",
+    "5": "image_quality",
+    "6": "relabel",
+    "7": "review_7",
+    "8": "review_8",
+    "9": "relabel",
+}
 
 
 def parse_csv_list(value):
@@ -24,7 +35,7 @@ def load_class_config(path):
 
 def load_type_labels(path):
     if path is None:
-        return None
+        return DEFAULT_TYPE_LABELS
 
     with open(path, "r") as f:
         return json.load(f)

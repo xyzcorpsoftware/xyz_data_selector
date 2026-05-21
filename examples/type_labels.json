@@ -1,11 +1,11 @@
 {
-  "1": "scene1",
-  "2": "scene2",
-  "3": "scene3",
-  "4": "scene4",
-  "5": "scene5",
-  "6": "scene6",
-  "7": "scene7",
-  "8": "none",
-  "9": "none"
+  "1": "bbox_fix",
+  "2": "missing_object",
+  "3": "wrong_class",
+  "4": "needs_review",
+  "5": "image_quality",
+  "6": "relabel",
+  "7": "review_7",
+  "8": "review_8",
+  "9": "relabel"
 }

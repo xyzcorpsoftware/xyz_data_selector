@@ -1,5 +1,6 @@
 import os
 import time
+import csv
 
 import numpy as np
 import cv2
@@ -474,6 +475,7 @@ class Player_Base:
         self.save_frame_gap=1
         self.debug_keys = False
         self._updating_trackbar = False
+        self.reset_checkpoint = False
 
     def get_base_path(self, base_pathname, play_data_type):
         if play_data_type in self._image_type_list:
@@ -537,37 +539,50 @@ class Player_Base:
         if check_key_value(config, "debug_keys"):
             self.debug_keys = bool(config["debug_keys"])
 
+        if check_key_value(config, "reset_checkpoint"):
+            self.reset_checkpoint = bool(config["reset_checkpoint"])
+
     def debug_command(self, command):
         if self.debug_keys:
             print("command=%s frame=%d" % (command, self._current_frame), flush=True)
 
-    def open_check_point(self, data_pathname, total_num_data=None):
-        self._resize_ratio_width = 1.
-        self._resize_ratio_height = 1.
-        self._current_frame = 0
+    def load_check_list_file(self, pathname, check_dict, pos_by_name, check_type=True):
+        if not os.path.isfile(pathname):
+            return 0
 
-        self._check_file_dict.clear()
-        self._check.clear()
+        count = 0
+        with open(pathname, 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) == 0:
+                    continue
+                file_name = parts[0]
+                if file_name not in pos_by_name:
+                    continue
+                pos_type = 0
+                if check_type and len(parts) > 1:
+                    pos_type = int(parts[1])
+                check_dict.add(file_name, pos_by_name[file_name], pos_type)
+                count += 1
+        if count > 0:
+            print("check list found: %s (%d)" % (pathname, count))
+        return count
 
-        if os.path.isfile(data_pathname):
-            data = json.load(open(data_pathname, 'r'))
-            if data is not None:
-                self._current_frame = data['current_pos']
-                self._current_frame = max(0, self._current_frame)
-                if total_num_data is not None:
-                    self._current_frame = min(total_num_data - 1, self._current_frame)
+    def load_saved_selection_files(self):
+        if self._file_infors is None or 'base_data' not in self._file_infors or self._data_list is None:
+            return
 
-                self._resize_ratio_width = data['resize_ratio_width']
-                self._resize_ratio_height = data['resize_ratio_height']
-                if check_key_value(data, 'section_list'):
-                    for _item in data['section_list']:
-                        self._sections.add_item_dict(_item)
-                if check_key_value(data, 'basic_check_lists'):
-                    for _item in data['basic_check_lists']:
-                        self._basic_check_dict.add(_item['name'], _item['pos'], _item['type'])
-                if check_key_value(data, 'check_lists'):
-                    for _item in data['check_lists']:
-                        self._check_name_dict.add(_item['name'], _item['pos'], _item['type'])
+        pos_by_name = {name: pos for pos, name in enumerate(self._data_list)}
+        base_infor = self._file_infors['base_data']
+        base_check_path = base_infor.get_check_list_save_pathname(
+            'list', file_name=self.window_name, base_path=self._check_point_path
+        )
+        self.load_check_list_file(base_check_path, self._basic_check_dict, pos_by_name, check_type=False)
+
+        check_file_list_path = base_infor.get_check_list_save_pathname(
+            'pos', file_name=self.window_name, base_path=self._check_point_path
+        )
+        self.load_check_list_file(check_file_list_path, self._check_file_dict, pos_by_name, check_type=True)
 
     def get_window_name(self, name, play_type, data_path):
         if check_str_value(name):
@@ -613,6 +628,12 @@ class Player_Base:
         self._check_file_dict.clear()
         self._basic_check_dict.clear()
 
+        if self.reset_checkpoint and os.path.isfile(data_pathname):
+            os.remove(data_pathname)
+            print("checkpoint reset: %s" % data_pathname)
+            self.load_saved_selection_files()
+            return
+
         if os.path.isfile(data_pathname):
             data = json.load(open(data_pathname, 'r'))
             if data is not None:
@@ -632,6 +653,9 @@ class Player_Base:
                 if check_key_value(data, 'check_lists'):
                     for _item in data['check_lists']:
                         self._check_file_dict.add(_item['name'], _item['pos'], _item['type'])
+                print("checkpoint found: resume from frame %d" % self._current_frame)
+        else:
+            self.load_saved_selection_files()
 
     def save_check_point(self, data_pathname):
         data = OrderedDict()
@@ -658,6 +682,16 @@ class Player_Base:
             data['check_lists'].append(_lists1)
 
         json.dump(data, open(data_pathname, 'w'))
+
+    def save_selection_files(self):
+        if self._file_infors is None or 'base_data' not in self._file_infors:
+            return
+        self.save_checked_file_list_data(self._file_infors['base_data'], self.window_name,
+                                         frame_gap=self.save_frame_gap)
+
+    def save_progress(self):
+        self.save_check_point(self._check_point_pathname)
+        self.save_selection_files()
 
     def check_video(self):
         if self._play_data_type in self._video_type_list:
@@ -743,6 +777,40 @@ class Player_Base:
                             self._op_key.type_color[_type], thick)
         return y_pos
 
+    def get_type_text(self, pos_type):
+        return self._op_key._type_text.get(int(pos_type), str(pos_type))
+
+    def get_selection_summary(self):
+        type_counts = OrderedDict()
+        for value in self._check_file_dict._check_names.values():
+            pos_type = int(value['type'])
+            type_counts[pos_type] = type_counts.get(pos_type, 0) + 1
+        return len(self._check_file_dict._check_names), type_counts
+
+    def draw_sampling_status(self, image, file_name, current_frame, total_frame):
+        selected_count, type_counts = self.get_selection_summary()
+        _pos, selected_type = self._check_file_dict.get_pos_type(file_name)
+        if selected_type >= 0:
+            selected_text = "SELECTED: %s" % self.get_type_text(selected_type)
+            status_color = (0, 255, 0)
+        else:
+            selected_text = "UNCHECKED"
+            status_color = (220, 220, 220)
+
+        status = "%d / %d | %s | selected %d" % (
+            current_frame + 1, total_frame, selected_text, selected_count
+        )
+        count_parts = []
+        for pos_type, count in type_counts.items():
+            count_parts.append("%s:%d" % (self.get_type_text(pos_type), count))
+        counts = " | ".join(count_parts)
+
+        overlay_h = 42 if counts else 26
+        cv2.rectangle(image, (0, 0), (image.shape[1], overlay_h), (0, 0, 0), -1)
+        cv2.putText(image, status, (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, status_color, 1)
+        if counts:
+            cv2.putText(image, counts, (8, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+
     def get_view_image(self, file_name, base_infor, sub_infor, current_frame, total_frame, merge_axis=1, fontScale=0.5,
                        thick=2):
 
@@ -750,7 +818,8 @@ class Player_Base:
         view_img = None
         if base_infor.image is not None:
             _base_image = base_infor.image.copy()
-            y_pos = 20
+            self.draw_sampling_status(_base_image, file_name, current_frame, total_frame)
+            y_pos = 60
             msg = "[%d/%d] %s" % (current_frame, total_frame, file_name)
             cv2.putText(_base_image, msg, (0, y_pos), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (255, 0, 0), thick)
             y_pos = self.draw_check_point_text(_base_image, file_name, current_frame, y_pos, fontScale=fontScale,
@@ -863,16 +932,19 @@ class Player_Base:
             if self._check_mode == 'pos':
                 _type = self._op_key.get_key_type(cmd)
                 self._check_file_dict.add_modify_del_by_name(file_name, self._current_frame, _type)
+                self.save_selection_files()
                 self.debug_command("type-%s" % _type)
             return 1
         if match_cv_key(raw_cmd, cmd, self._op_key._basic_check, self._op_key.basic_check_aliases):
             self._basic_check_dict.add_modify_del_by_name(file_name, self._current_frame, check_del=True)
+            self.save_selection_files()
             self.debug_command("basic-check")
             return 1
 
         if match_cv_key(raw_cmd, cmd, self._op_key.del_section, self._op_key.del_section_aliases):
             if self._check_mode == 'pos':
                 self._check_file_dict.del_by_name(file_name)
+            self.save_selection_files()
             self.debug_command("delete-check")
             return 1
 
@@ -885,8 +957,7 @@ class Player_Base:
             return 1
 
         if match_cv_key(raw_cmd, cmd, self._op_key.save_file_list, self._op_key.save_file_list_aliases):
-            self.save_checked_file_list_data(self._file_infors['base_data'], self.window_name,
-                                             frame_gap=self.save_frame_gap)
+            self.save_selection_files()
             self.debug_command("save-file-list")
             return 1
 
@@ -1050,7 +1121,7 @@ class Label_Player(Player_Base):
 
         while Run:
             if not self.is_window_open():
-                self.save_check_point(self._check_point_pathname)
+                self.save_progress()
                 break
 
             if self.check_file_load():
@@ -1062,7 +1133,7 @@ class Label_Player(Player_Base):
                 check_value = self.next_data_command(cmd, self._frame_name)
 
                 if self._current_frame < self._num_total_frames:
-                    self.save_check_point(self._check_point_pathname)
+                    self.save_progress()
                     self.prev_num_frame = self._current_frame
                     self.set_current_frame(self._current_frame + 1)
 
@@ -1074,14 +1145,14 @@ class Label_Player(Player_Base):
                 check_value = self.next_data_command(cmd, self._frame_name)
                 if check_value == 1 and self.check_file_load():
                     self.refresh_current_frame()
-                self.save_check_point(self._check_point_pathname)
+                self.save_progress()
 
                 if check_value == 2:
                     self.save_capture_image(self._frame_name, self._capture_save_path, self.view_image,
                                             self._current_frame,
                                             self._check_mode)
                 if check_value == -1:
-                    self.save_check_point(self._check_point_pathname)
+                    self.save_progress()
                     print("exit")
                     break
 
@@ -1284,6 +1355,7 @@ class Data_Extractor:
             shutil.copy(src_path_name, save_path_name)
         else:
             shutil.move(src_path_name, save_path_name)
+        return save_path_name
 
     def save_data(self, save_path, file_name, data):
         if data is not None:
@@ -1309,6 +1381,38 @@ class Data_Extractor:
                 self.copy_file_data(_infor, save_path, file_data, target_prefix=target_prefix,
                                     check_copy=self.check_copy)
 
+    def save_selected_summary(self, file_list):
+        loader.make_folder(self.save_path)
+        summary_path = os.path.join(self.save_path, "selected_samples.csv")
+        base_infor = self.file_infors['base_data']
+        sub_infor = self.file_infors['sub_data']
+        with open(summary_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["file", "type", "image_path", "label_path"])
+            writer.writeheader()
+            for file_data in file_list:
+                if not file_data.check_data:
+                    continue
+                _path_key = file_data.get_section_type(self.check_mode, self._section_mode_list)
+                image_name = loader.get_target_file_name(
+                    file_data.file_name, base_infor.prefix, base_infor.prefix,
+                    change_ext=base_infor._file_ext
+                )
+                row = {
+                    "file": file_data.file_name,
+                    "type": file_data.pos_type,
+                    "image_path": os.path.join(self.save_paths[_path_key]['base_data'], image_name),
+                    "label_path": "",
+                }
+                for key, _infor in sub_infor.items():
+                    label_name = loader.get_target_file_name(
+                        file_data.file_name, base_infor.prefix, _infor.prefix,
+                        change_ext=_infor._file_ext
+                    )
+                    row["label_path"] = os.path.join(self.save_paths[_path_key][key], label_name)
+                    break
+                writer.writerow(row)
+        return summary_path
+
     def save_data_list(self, file_list):
         for file in tqdm.tqdm(file_list, desc='copy'):
             idx = loader.get_file_name_index(file.file_name)
@@ -1332,6 +1436,8 @@ class Data_Extractor:
         if len(file_list) > 0:
             for file_data in tqdm.tqdm(file_list, total=len(file_list)):
                 self.copy_data(file_data)
+            summary_path = self.save_selected_summary(file_list)
+            print("selected summary:", summary_path)
 
 
 

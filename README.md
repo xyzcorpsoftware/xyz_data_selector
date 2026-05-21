@@ -57,7 +57,7 @@ DATASET_FOLDER/
 - 이미지 파일명과 라벨 파일명은 확장자를 제외하고 같아야 합니다.
 - 현재 기본 라벨 타입은 `Labelme_BBox`이며, Labelme의 `rectangle` shape를 bbox로 읽습니다.
 
-여러 수집 세션을 한 상위 폴더에 모아두는 경우에는, 실행할 때 상위 폴더가 아니라 개별 데이터셋 폴더를 `--base-path`로 지정합니다.
+여러 수집 세션을 한 상위 폴더에 모아두는 경우에는 개별 세션 폴더를 지정하거나, `--sessions` 옵션으로 상위 폴더 아래의 모든 세션을 순서대로 확인할 수 있습니다.
 
 ```text
 datasets/
@@ -75,6 +75,12 @@ datasets/
 python 1_select_sample.py --base-path /path/to/datasets/SESSION_A
 ```
 
+상위 폴더 안의 모든 세션을 이어서 확인하려면:
+
+```bash
+python 1_select_sample.py --base-path /path/to/datasets --sessions
+```
+
 ## 1. 샘플 확인 및 선택
 
 [1_select_sample.py](1_select_sample.py)는 이미지와 bbox 라벨을 함께 보여주는 확인용 플레이어입니다.
@@ -84,6 +90,14 @@ python 1_select_sample.py --base-path /path/to/datasets/SESSION_A
 ```bash
 python 1_select_sample.py --base-path /path/to/DATASET_FOLDER
 ```
+
+여러 세션이 들어 있는 상위 폴더를 한 번에 확인하려면:
+
+```bash
+python 1_select_sample.py --base-path /path/to/datasets --sessions
+```
+
+이 경우 `images/`와 `bbox/`를 둘 다 가진 하위 폴더만 세션으로 인식합니다.
 
 기본 클래스 설정은 `cup` 라벨을 바로 볼 수 있도록 준비되어 있습니다. 지금 수집하는 컵 데이터셋처럼 라벨이 `cup`이면 `--class-config` 없이 실행해도 됩니다.
 
@@ -138,6 +152,19 @@ python 1_select_sample.py \
 ```
 
 `1`-`9` 체크 타입의 표시 이름은 별도 JSON으로 지정할 수 있습니다.
+별도 지정하지 않으면 기본 타입 이름이 사용됩니다.
+
+| 키 | 기본 타입 이름 |
+| --- | --- |
+| `1` | `bbox_fix` |
+| `2` | `missing_object` |
+| `3` | `wrong_class` |
+| `4` | `needs_review` |
+| `5` | `image_quality` |
+| `6` | `relabel` |
+| `7` | `review_7` |
+| `8` | `review_8` |
+| `9` | `relabel` |
 
 ```bash
 python 1_select_sample.py \
@@ -172,7 +199,7 @@ python 1_select_sample.py \
 | `1`-`9` | 현재 이미지에 타입 지정 |
 | `s` | 기본 체크 토글 |
 | `w` | 현재 이미지 체크 삭제 |
-| `p` | 체크 목록 저장 |
+| `p` | 체크 목록 수동 저장 |
 | `t` | 현재 화면 캡처 저장 |
 | `m` | 라벨 텍스트 표시 토글 |
 | `/` | 트랙바 업데이트 토글 |
@@ -185,7 +212,9 @@ python 1_select_sample.py \
 단축키는 macOS, Ubuntu, Windows 모두 **영문 입력 상태**에서 사용하는 것을 권장합니다. 한글/일본어/중국어 같은 IME 입력 상태에서는 OpenCV backend와 OS에 따라 letter key의 raw code가 다르게 들어올 수 있습니다.
 macOS 한글 입력기에서 관측된 주요 이동/종료 키는 일부 보정되어 있지만, 가장 안정적인 방법은 영문 입력 상태로 전환하거나 `←`, `→` 방향키를 사용하는 것입니다.
 
-체크포인트와 체크 목록은 데이터셋 루트에 저장됩니다.
+선택 상태는 화면 상단에 표시됩니다. 현재 이미지가 선택됐는지, 전체 선택 개수, 타입별 개수를 바로 확인할 수 있습니다.
+
+체크포인트와 체크 목록은 데이터셋 루트에 저장됩니다. `1`-`9`, `s`, `w`로 선택 상태가 바뀔 때 체크 목록은 자동 저장되므로, 보통 `p`를 따로 누르지 않아도 됩니다.
 
 ```text
 DATASET_FOLDER/
@@ -196,7 +225,15 @@ DATASET_FOLDER/
 
 `target`은 `--target`으로 지정하거나, 생략 시 데이터셋 폴더명으로 자동 지정됩니다.
 
-항상 첫 프레임부터 다시 시작하려면 `{target}_check_point.json` 파일을 삭제하면 됩니다.
+항상 첫 프레임부터 다시 시작하려면 `--reset-checkpoint`를 사용합니다. 이 옵션은 기존 체크 목록은 유지하고, 마지막으로 보던 위치만 초기화합니다.
+
+```bash
+python 1_select_sample.py \
+  --base-path /path/to/DATASET_FOLDER \
+  --reset-checkpoint
+```
+
+체크 목록까지 완전히 초기화하려면 `{target}_base_check_file_list.txt`, `{target}_check_file_list.txt` 파일을 삭제합니다.
 
 ## 2. 체크한 데이터 추출
 
@@ -221,22 +258,29 @@ python 2_data_extract_test.py \
 | 옵션 | 설명 |
 | --- | --- |
 | `--target` | 체크 목록 파일 이름에 사용할 세션 이름. 생략 시 데이터셋 폴더명 |
-| `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_FOLDER/{target}` |
+| `--save-path` | 추출 결과 저장 경로. 생략 시 `DATASET_FOLDER/selected_dataset` |
 | `--class-config` | 클래스 이름과 bbox 색상 JSON 파일 |
 | `--check-mode` | `list` 또는 `pos` |
 | `--move` | 복사 대신 이동 |
-| `--data-merging` | 타입별 결과를 한 폴더로 합침 |
-| `--separate-folders` | 이미지와 라벨을 각각 하위 폴더에 저장 |
+| `--type-folders` | 타입별 하위 폴더를 만드는 기존 방식으로 저장 |
+| `--data-merging` | 호환성용 옵션. 현재 기본 출력은 이미 통합 폴더 구조 |
+| `--separate-folders` | 호환성용 옵션. 현재 기본 출력은 이미 `images/`, `bbox/` 분리 구조 |
 
 기본 출력 경로는 아래와 같습니다.
 
 ```text
 DATASET_FOLDER/
-  {target}/
-    0_{target}_{type}/
-      images 또는 이미지 파일
-      bbox 또는 라벨 파일
+  selected_dataset/
+    images/
+      selected image files
+    bbox/
+      selected label files
+    selected_samples.csv
 ```
+
+`selected_samples.csv`에는 추출된 파일명, 체크 타입, 이미지 경로, 라벨 경로가 기록됩니다.
+
+타입별 폴더를 따로 만들고 싶으면 `--type-folders`를 사용합니다.
 
 ## 3. 작업 단위로 데이터 분할
 
