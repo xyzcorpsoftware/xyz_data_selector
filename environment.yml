@@ -1,0 +1,8 @@
+name: xyz_data_selector
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - opencv
+  - numpy
+  - tqdm

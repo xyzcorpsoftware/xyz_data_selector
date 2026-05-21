@@ -12,33 +12,31 @@
 
 ## 설치
 
-Python 3.9 이상 환경을 권장합니다.
+Python 3.9 기반 conda 환경을 권장합니다. OpenCV GUI 창(`cv2.imshow`, `cv2.waitKey`, trackbar)을 사용하므로, OpenCV는 `conda-forge` 채널의 `opencv` 패키지를 사용합니다.
 
-macOS / Ubuntu:
+환경 파일로 설치:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate xyz_data_selector
 ```
 
-Windows PowerShell:
+직접 설치:
 
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+```bash
+conda create -n xyz_data_selector python=3.9
+conda activate xyz_data_selector
+conda install -c conda-forge opencv numpy tqdm
 ```
 
-Windows cmd:
+이미 환경을 만들어 둔 경우에는 활성화한 뒤 OpenCV를 설치합니다.
 
-```bat
-py -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
+```bash
+conda activate xyz_data_selector
+conda install -c conda-forge opencv
 ```
 
-설치 후 가상환경이 활성화된 상태에서는 `python` 명령으로 스크립트를 실행합니다.
+설치 후 conda 환경이 활성화된 상태에서는 `python` 명령으로 스크립트를 실행합니다.
 
 ## 데이터셋 구조
 
@@ -336,7 +334,7 @@ file_config = {
 
 최근 버전에서는 다음 정리를 반영했습니다.
 
-- `requirements.txt` 추가
+- `environment.yml` 추가 및 conda-forge OpenCV 설치 기준 정리
 - 세 실행 스크립트의 Windows 하드코딩 경로 제거 및 CLI 인자화
 - 클래스/색상 설정과 체크 타입 라벨의 JSON 파일 분리
 - bbox 영역 교차 계산, 파일명 생성, shuffle, 추출 폴더 설정 관련 런타임 버그 수정
